@@ -174,6 +174,39 @@ object RecetasData {
                 ),
                 tiempoPreparacion = "90 min + 4h refrigeración",
                 dificultad = "Media"
+            ),
+            Receta(
+                id = 7,
+                nombre = "Cazuela de Vacuno",
+                tipo = "Comida",
+                imagenResId = android.R.drawable.ic_menu_gallery,
+                ingredientes = listOf(
+                    "1kg de aletillas de vacuno",
+                    "3 dientes de ajo",
+                    "1 pimentón rojo",
+                    "1 zanahoria",
+                    "3 hojas de apio",
+                    "100g de porotos verdes",
+                    "5 papas",
+                    "2 choclos",
+                    "200g de zapallos",
+                    "60g de arroz",
+                    "1 manojo pequeño de cilantro",
+                    "Orégano fresco o seco molido",
+                    "Aceite de maravilla",
+                    "Sal y pimienta al gusto"
+                ),
+                pasos = listOf(
+                    "Selle las aletillas en una olla con una lámina de aceite, luego agregue el orégano, ajo, hojas de apio, pimentón y zanahoria picada en tiras delgadas (julianna)",
+                    "Condimente con sal y pimienta",
+                    "Agregue agua hervida hasta que cubra todos los alimentos y deje cocer por 1 hora",
+                    "Mientras tanto, lave y pele las papas, corte el zapallo en 4 partes con cáscara, corte el choclo en la mitad y reserve",
+                    "Cuando haya transcurrido la hora de cocción agregue las papas, el poroto verde picado en tiras delgadas (julianna) y el arroz, y siga cociendo la cazuela por 10 minutos más",
+                    "Por último, agregue el zapallo y el choclo, y cocine por 10 minutos más",
+                    "Sirva en plato hondo o pocillo de greda (lebrillo) con cilantro encima picado fino (chiffonade)"
+                ),
+                tiempoPreparacion = "35 min",
+                dificultad = "Media"
             )
         )
     }
