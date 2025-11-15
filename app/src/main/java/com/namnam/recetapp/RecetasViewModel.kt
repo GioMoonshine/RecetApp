@@ -50,17 +50,18 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
                 val usuario = usuarioDao.obtenerUsuarioPorId(userId)
                 _usuarioActual.value = usuario
 
-                // Cargar mis recetas
+                // Cargar MIS recetas (solo las del usuario actual, privadas y públicas)
                 launch {
                     recetaDao.obtenerRecetasDelUsuario(userId).collect { recetas ->
                         _misRecetas.value = recetas
                     }
                 }
 
-                // Cargar todas las recetas PÚBLICAS (explorar)
+                // Cargar recetas públicas EXCLUYENDO las del usuario actual
                 launch {
-                    recetaDao.obtenerRecetasPublicas().collect { recetas ->
-                        _explorarRecetas.value = recetas
+                    recetaDao.obtenerRecetasPublicas().collect { todasPublicas ->
+                        // Filtrar para excluir las del usuario actual
+                        _explorarRecetas.value = todasPublicas.filter { it.usuarioId != userId }
                     }
                 }
             }
@@ -88,13 +89,13 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
             )
             val userId = usuarioDao.insertarUsuario(nuevoUsuario).toInt()
 
-            // Crear recetas por defecto ANTES de guardar la sesión
+            // Crear recetas por defecto PRIVADAS ANTES de guardar la sesión
             val recetasPorDefecto = RecetasData.obtenerRecetasPorDefecto(userId)
             for (receta in recetasPorDefecto) {
                 recetaDao.insertarReceta(receta)
             }
 
-            // Ahora sí, guardar sesión y cargar datos
+            // Guardar sesión y cargar datos
             sessionManager.saveUserSession(userId, nombreUsuario)
             cargarUsuarioActual()
 
@@ -163,7 +164,8 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
         tiempoUnidad: String,
         ingredientes: List<IngredienteItem>,
         pasos: List<String>,
-        imagenUri: String? = null
+        imagenUri: String? = null,
+        esPrivada: Boolean = false  // Por defecto las recetas nuevas son públicas
     ) {
         viewModelScope.launch {
             _usuarioActual.value?.let { usuario ->
@@ -176,7 +178,8 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
                     ingredientes = ingredientes,
                     pasos = pasos,
                     usuarioId = usuario.id,
-                    imagenUri = imagenUri
+                    imagenUri = imagenUri,
+                    esPrivada = esPrivada
                 )
                 recetaDao.insertarReceta(nuevaReceta)
             }

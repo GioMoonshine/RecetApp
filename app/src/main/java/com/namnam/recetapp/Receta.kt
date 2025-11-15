@@ -41,7 +41,8 @@ data class Receta(
     // URI de la imagen personalizada (si existe)
     val imagenUri: String? = null,
 
-    val esPrivada: Boolean
+    // TRUE = privada (solo el usuario), FALSE = pública (visible en Explorar)
+    val esPrivada: Boolean = false
 ) {
     fun getTiempoDisplay(): String {
         return "$tiempoValor ${tiempoUnidad.lowercase(Locale.ROOT)}"

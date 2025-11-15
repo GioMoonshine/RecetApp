@@ -245,6 +245,9 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
 }
 
 // === NAVEGACIÓN PRINCIPAL ===
+// ESTE ES SOLO EL FRAGMENTO CORREGIDO DE MainActivity.kt
+// Reemplaza la función AppRecetasNavegacion completa
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
@@ -308,12 +311,14 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                                 recetaSeleccionada = receta
                                 pantallaActual = Pantalla.DETALLE
                             },
+                            // Solo permitir editar/borrar recetas del usuario actual
                             onDeleteClick = { receta -> viewModel.borrarReceta(receta) },
                             onEditClick = { receta ->
                                 recetaSeleccionada = receta
                                 pantallaActual = Pantalla.CREAR_O_EDITAR
                             },
-                            mostrarAutor = false
+                            mostrarAutor = false,
+                            usuarioActualId = usuarioActual?.id
                         )
                     }
                     composable(Rutas.EXPLORAR) {
@@ -324,13 +329,15 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                                 recetaSeleccionada = receta
                                 pantallaActual = Pantalla.DETALLE
                             },
+                            // NO permitir editar/borrar en Explorar
                             onDeleteClick = null,
                             onEditClick = null,
                             mostrarAutor = true,
                             onAutorClick = { usuario ->
                                 usuarioSeleccionado = usuario
                                 pantallaActual = Pantalla.PERFIL_USUARIO
-                            }
+                            },
+                            usuarioActualId = usuarioActual?.id
                         )
                     }
                     composable(Rutas.PERFIL) {
@@ -389,6 +396,82 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
     }
 }
 
+// TAMBIÉN REEMPLAZA PantallaListaRecetas:
+
+@Composable
+fun PantallaListaRecetas(
+    recetas: List<Receta>,
+    viewModel: RecetasViewModel,
+    onRecetaClick: (Receta) -> Unit,
+    onDeleteClick: ((Receta) -> Unit)?,
+    onEditClick: ((Receta) -> Unit)?,
+    mostrarAutor: Boolean = false,
+    onAutorClick: ((Usuario) -> Unit)? = null,
+    usuarioActualId: Int? = null  // NUEVO PARÁMETRO
+) {
+    var usuariosMap by remember { mutableStateOf<Map<Int, Usuario>>(emptyMap()) }
+
+    LaunchedEffect(recetas) {
+        if (mostrarAutor) {
+            val map = mutableMapOf<Int, Usuario>()
+            recetas.forEach { receta ->
+                if (!map.containsKey(receta.usuarioId)) {
+                    viewModel.obtenerUsuarioPorId(receta.usuarioId)?.let { usuario ->
+                        map[receta.usuarioId] = usuario
+                    }
+                }
+            }
+            usuariosMap = map
+        }
+    }
+
+    if (recetas.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Restaurant,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "No hay recetas disponibles",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(recetas) { receta ->
+                // Verificar si la receta pertenece al usuario actual
+                val esPropietario = usuarioActualId != null && receta.usuarioId == usuarioActualId
+
+                TarjetaReceta(
+                    receta = receta,
+                    autor = if (mostrarAutor) usuariosMap[receta.usuarioId] else null,
+                    onClick = { onRecetaClick(receta) },
+                    // Solo mostrar botones si es propietario Y los callbacks no son null
+                    onDeleteClick = if (esPropietario && onDeleteClick != null) {
+                        { onDeleteClick(receta) }
+                    } else null,
+                    onEditClick = if (esPropietario && onEditClick != null) {
+                        { onEditClick(receta) }
+                    } else null,
+                    onAutorClick = if (mostrarAutor && onAutorClick != null) {
+                        { usuariosMap[receta.usuarioId]?.let { onAutorClick(it) } }
+                    } else null
+                )
+            }
+        }
+    }
+}
 // === BARRA DE NAVEGACIÓN INFERIOR ===
 @Composable
 fun AppBottomNavigation(navController: NavHostController) {
