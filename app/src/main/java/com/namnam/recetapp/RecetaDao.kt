@@ -19,15 +19,11 @@ interface RecetaDao {
     @Delete
     suspend fun borrarReceta(receta: Receta)
 
-    // Obtener recetas del usuario actual
+    // Obtener todas las recetas del usuario (privadas y públicas propias)
     @Query("SELECT * FROM recetas_usuario WHERE usuarioId = :userId ORDER BY fechaCreacion DESC")
     fun obtenerRecetasDelUsuario(userId: Int): Flow<List<Receta>>
 
-    // Obtener todas las recetas de todos los usuarios
-    @Query("SELECT * FROM recetas_usuario ORDER BY fechaCreacion DESC")
-    fun obtenerTodasLasRecetas(): Flow<List<Receta>>
-
-    // Obtener recetas de otros usuarios (para explorar)
-    @Query("SELECT * FROM recetas_usuario WHERE usuarioId != :currentUserId ORDER BY fechaCreacion DESC")
-    fun obtenerRecetasDeOtrosUsuarios(currentUserId: Int): Flow<List<Receta>>
+    // Obtener solo recetas PÚBLICAS para explorar (de todos los usuarios)
+    @Query("SELECT * FROM recetas_usuario WHERE esPrivada = 0 ORDER BY fechaCreacion DESC")
+    fun obtenerRecetasPublicas(): Flow<List<Receta>>
 }

@@ -14,24 +14,23 @@ import kotlinx.coroutines.launch
 
 class RecetasViewModel(application: Application) : AndroidViewModel(application) {
 
+    // === BASE DE DATOS ===
     private val database = AppDatabase.getDatabase(application)
     private val recetaDao = database.recetaDao()
     private val usuarioDao = database.usuarioDao()
     private val sessionManager = SessionManager(application)
+    val themeManager = ThemeManager(application)
 
-    // Estado del usuario actual
+    // === ESTADOS ===
     private val _usuarioActual = MutableStateFlow<Usuario?>(null)
     val usuarioActual: StateFlow<Usuario?> = _usuarioActual.asStateFlow()
 
-    // Mis recetas (del usuario actual)
     private val _misRecetas = MutableStateFlow<List<Receta>>(emptyList())
     val misRecetas: StateFlow<List<Receta>> = _misRecetas.asStateFlow()
 
-    // Recetas para explorar (de otros usuarios)
     private val _explorarRecetas = MutableStateFlow<List<Receta>>(emptyList())
     val explorarRecetas: StateFlow<List<Receta>> = _explorarRecetas.asStateFlow()
 
-    // Todos los usuarios
     val todosLosUsuarios: StateFlow<List<Usuario>> = usuarioDao.obtenerTodosLosUsuarios()
         .stateIn(
             scope = viewModelScope,
@@ -43,6 +42,7 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
         cargarUsuarioActual()
     }
 
+    // === USUARIO ===
     private fun cargarUsuarioActual() {
         viewModelScope.launch {
             val userId = sessionManager.getCurrentUserId()
@@ -50,20 +50,22 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
                 val usuario = usuarioDao.obtenerUsuarioPorId(userId)
                 _usuarioActual.value = usuario
 
-                // Cargar recetas del usuario
-                recetaDao.obtenerRecetasDelUsuario(userId).collect { recetas ->
-                    _misRecetas.value = recetas
+                // Cargar mis recetas
+                launch {
+                    recetaDao.obtenerRecetasDelUsuario(userId).collect { recetas ->
+                        _misRecetas.value = recetas
+                    }
                 }
 
-                // Cargar recetas de otros usuarios
-                recetaDao.obtenerRecetasDeOtrosUsuarios(userId).collect { recetas ->
-                    _explorarRecetas.value = recetas
+                // Cargar todas las recetas PÚBLICAS (explorar)
+                launch {
+                    recetaDao.obtenerRecetasPublicas().collect { recetas ->
+                        _explorarRecetas.value = recetas
+                    }
                 }
             }
         }
     }
-
-    // --- FUNCIONES DE USUARIO ---
 
     suspend fun registrarUsuario(
         nombreUsuario: String,
@@ -74,20 +76,31 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
         return try {
             val existe = usuarioDao.existeUsuario(nombreUsuario) > 0
             if (existe) {
-                false
-            } else {
-                val nuevoUsuario = Usuario(
-                    nombreUsuario = nombreUsuario,
-                    nombreCompleto = nombreCompleto,
-                    email = email,
-                    bio = bio
-                )
-                val userId = usuarioDao.insertarUsuario(nuevoUsuario).toInt()
-                sessionManager.saveUserSession(userId, nombreUsuario)
-                cargarUsuarioActual()
-                true
+                return false
             }
+
+            // Crear usuario
+            val nuevoUsuario = Usuario(
+                nombreUsuario = nombreUsuario,
+                nombreCompleto = nombreCompleto,
+                email = email,
+                bio = bio
+            )
+            val userId = usuarioDao.insertarUsuario(nuevoUsuario).toInt()
+
+            // Crear recetas por defecto ANTES de guardar la sesión
+            val recetasPorDefecto = RecetasData.obtenerRecetasPorDefecto(userId)
+            for (receta in recetasPorDefecto) {
+                recetaDao.insertarReceta(receta)
+            }
+
+            // Ahora sí, guardar sesión y cargar datos
+            sessionManager.saveUserSession(userId, nombreUsuario)
+            cargarUsuarioActual()
+
+            true
         } catch (e: Exception) {
+            e.printStackTrace()
             false
         }
     }
@@ -114,10 +127,23 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
         _explorarRecetas.value = emptyList()
     }
 
-    fun actualizarPerfil(bio: String) {
+    fun actualizarPerfil(bio: String, fotoPerfilUri: String? = null) {
         viewModelScope.launch {
             _usuarioActual.value?.let { usuario ->
-                val usuarioActualizado = usuario.copy(bio = bio)
+                val usuarioActualizado = usuario.copy(
+                    bio = bio,
+                    fotoPerfilUri = fotoPerfilUri ?: usuario.fotoPerfilUri
+                )
+                usuarioDao.actualizarUsuario(usuarioActualizado)
+                _usuarioActual.value = usuarioActualizado
+            }
+        }
+    }
+
+    fun actualizarFotoPerfil(uri: String) {
+        viewModelScope.launch {
+            _usuarioActual.value?.let { usuario ->
+                val usuarioActualizado = usuario.copy(fotoPerfilUri = uri)
                 usuarioDao.actualizarUsuario(usuarioActualizado)
                 _usuarioActual.value = usuarioActualizado
             }
@@ -128,8 +154,7 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
         return usuarioDao.obtenerUsuarioPorId(userId)
     }
 
-    // --- FUNCIONES DE RECETAS ---
-
+    // === RECETAS ===
     fun crearReceta(
         nombre: String,
         tipo: String,

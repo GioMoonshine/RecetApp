@@ -3,11 +3,12 @@ package com.namnam.recetapp
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,6 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -38,11 +40,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
+import com.namnam.recetapp.com.namnam.recetapp.ImagePickerBox
 import com.namnam.recetapp.ui.theme.RecetAppTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+// === RUTAS DE NAVEGACIÓN ===
 object Rutas {
     const val MIS_RECETAS = "mis_recetas"
     const val EXPLORAR = "explorar"
@@ -56,8 +60,8 @@ private enum class Pantalla {
     PERFIL_USUARIO
 }
 
+// === ACTIVITY PRINCIPAL ===
 class MainActivity : ComponentActivity() {
-
     private val viewModel: RecetasViewModel by viewModels {
         RecetasViewModel.RecetasViewModelFactory(application)
     }
@@ -65,7 +69,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RecetAppTheme {
+            val isDarkMode by viewModel.themeManager.isDarkMode.collectAsState()
+
+            RecetAppTheme(darkTheme = isDarkMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -83,6 +89,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// === PANTALLA DE AUTENTICACIÓN ===
 @Composable
 fun PantallaAuth(viewModel: RecetasViewModel) {
     var modoRegistro by remember { mutableStateOf(false) }
@@ -90,7 +97,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
     var nombreCompleto by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf("") }
-
     val scope = rememberCoroutineScope()
 
     Box(
@@ -101,26 +107,20 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp)
+                .padding(40.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo placeholder (círculo negro con icono)
-            Box(
+            // Logo
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "Logo",
                 modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Restaurant,
-                    contentDescription = null,
-                    modifier = Modifier.size(60.dp),
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
+                    .size(100.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -134,7 +134,7 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                if (modoRegistro) "Crea tu cuenta" else "Bienvenido de vuelta",
+                if (modoRegistro) "Crea tu cuenta" else "Bienvenido",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -150,7 +150,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
                 label = { Text("Usuario") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline
@@ -165,7 +164,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
                     label = { Text("Nombre completo") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
@@ -180,7 +178,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline
@@ -211,21 +208,15 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
                         } else {
                             viewModel.iniciarSesion(username.trim())
                         }
-
                         if (!exito) {
-                            errorMsg = if (modoRegistro) {
-                                "El usuario ya existe"
-                            } else {
-                                "Usuario no encontrado"
-                            }
+                            errorMsg = if (modoRegistro) "El usuario ya existe" else "Usuario no encontrado"
                         }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
+                    .height(50.dp),
                 enabled = username.isNotBlank() && (!modoRegistro || (nombreCompleto.isNotBlank() && email.isNotBlank())),
-                shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -240,12 +231,10 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            TextButton(
-                onClick = {
-                    modoRegistro = !modoRegistro
-                    errorMsg = ""
-                }
-            ) {
+            TextButton(onClick = {
+                modoRegistro = !modoRegistro
+                errorMsg = ""
+            }) {
                 Text(
                     if (modoRegistro) "¿Ya tienes cuenta? Inicia sesión" else "¿No tienes cuenta? Regístrate",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -255,6 +244,7 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
     }
 }
 
+// === NAVEGACIÓN PRINCIPAL ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
@@ -276,12 +266,12 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                             Text(
                                 "RecetApp",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp
+                                fontSize = 24.sp
                             )
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                            titleContentColor = MaterialTheme.colorScheme.onSurface
+                            containerColor = MaterialTheme.colorScheme.background,
+                            titleContentColor = MaterialTheme.colorScheme.onBackground
                         )
                     )
                 },
@@ -297,8 +287,7 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                                 pantallaActual = Pantalla.CREAR_O_EDITAR
                             },
                             containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            shape = CircleShape
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ) {
                             Icon(Icons.Default.Add, contentDescription = "Crear Receta")
                         }
@@ -313,16 +302,13 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                 ) {
                     composable(Rutas.MIS_RECETAS) {
                         PantallaListaRecetas(
-                            titulo = "Mis Recetas",
                             recetas = misRecetas,
                             viewModel = viewModel,
                             onRecetaClick = { receta ->
                                 recetaSeleccionada = receta
                                 pantallaActual = Pantalla.DETALLE
                             },
-                            onDeleteClick = { receta ->
-                                viewModel.borrarReceta(receta)
-                            },
+                            onDeleteClick = { receta -> viewModel.borrarReceta(receta) },
                             onEditClick = { receta ->
                                 recetaSeleccionada = receta
                                 pantallaActual = Pantalla.CREAR_O_EDITAR
@@ -332,7 +318,6 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                     }
                     composable(Rutas.EXPLORAR) {
                         PantallaListaRecetas(
-                            titulo = "Explorar",
                             recetas = explorarRecetas,
                             viewModel = viewModel,
                             onRecetaClick = { receta ->
@@ -354,9 +339,7 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                                 usuario = usuario,
                                 viewModel = viewModel,
                                 esMiPerfil = true,
-                                onCerrarSesion = {
-                                    viewModel.cerrarSesion()
-                                }
+                                onCerrarSesion = { viewModel.cerrarSesion() }
                             )
                         }
                     }
@@ -389,7 +372,6 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                 }
             )
         }
-
         Pantalla.PERFIL_USUARIO -> {
             usuarioSeleccionado?.let { usuario ->
                 PantallaPerfil(
@@ -407,24 +389,19 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
     }
 }
 
+// === BARRA DE NAVEGACIÓN INFERIOR ===
 @Composable
 fun AppBottomNavigation(navController: NavHostController) {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp
     ) {
-        val navBackStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = navBackStackEntry?.destination?.route
-
         NavigationBarItem(
-            icon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Explorar",
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            label = { Text("Explorar", fontSize = 12.sp) },
+            icon = { Icon(Icons.Default.Search, contentDescription = "Explorar") },
+            label = { Text("Explorar") },
             selected = currentRoute == Rutas.EXPLORAR,
             onClick = {
                 navController.navigate(Rutas.EXPLORAR) {
@@ -433,22 +410,16 @@ fun AppBottomNavigation(navController: NavHostController) {
                 }
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                selectedIconColor = MaterialTheme.colorScheme.onBackground,
+                selectedTextColor = MaterialTheme.colorScheme.onBackground,
                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 indicatorColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
         NavigationBarItem(
-            icon = {
-                Icon(
-                    Icons.Default.Home,
-                    contentDescription = "Mis Recetas",
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            label = { Text("Mis Recetas", fontSize = 12.sp) },
+            icon = { Icon(Icons.Default.Home, contentDescription = "Mis Recetas") },
+            label = { Text("Mis Recetas") },
             selected = currentRoute == Rutas.MIS_RECETAS,
             onClick = {
                 navController.navigate(Rutas.MIS_RECETAS) {
@@ -457,22 +428,16 @@ fun AppBottomNavigation(navController: NavHostController) {
                 }
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                selectedIconColor = MaterialTheme.colorScheme.onBackground,
+                selectedTextColor = MaterialTheme.colorScheme.onBackground,
                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 indicatorColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
         NavigationBarItem(
-            icon = {
-                Icon(
-                    Icons.Default.Person,
-                    contentDescription = "Perfil",
-                    modifier = Modifier.size(24.dp)
-                )
-            },
-            label = { Text("Perfil", fontSize = 12.sp) },
+            icon = { Icon(Icons.Default.Person, contentDescription = "Perfil") },
+            label = { Text("Perfil") },
             selected = currentRoute == Rutas.PERFIL,
             onClick = {
                 navController.navigate(Rutas.PERFIL) {
@@ -481,8 +446,8 @@ fun AppBottomNavigation(navController: NavHostController) {
                 }
             },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = MaterialTheme.colorScheme.onSurface,
-                selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                selectedIconColor = MaterialTheme.colorScheme.onBackground,
+                selectedTextColor = MaterialTheme.colorScheme.onBackground,
                 unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 indicatorColor = MaterialTheme.colorScheme.surfaceVariant
@@ -491,9 +456,9 @@ fun AppBottomNavigation(navController: NavHostController) {
     }
 }
 
+// === LISTA DE RECETAS ===
 @Composable
 fun PantallaListaRecetas(
-    titulo: String,
     recetas: List<Receta>,
     viewModel: RecetasViewModel,
     onRecetaClick: (Receta) -> Unit,
@@ -509,8 +474,7 @@ fun PantallaListaRecetas(
             val map = mutableMapOf<Int, Usuario>()
             recetas.forEach { receta ->
                 if (!map.containsKey(receta.usuarioId)) {
-                    val usuario = viewModel.obtenerUsuarioPorId(receta.usuarioId)
-                    if (usuario != null) {
+                    viewModel.obtenerUsuarioPorId(receta.usuarioId)?.let { usuario ->
                         map[receta.usuarioId] = usuario
                     }
                 }
@@ -519,57 +483,47 @@ fun PantallaListaRecetas(
         }
     }
 
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        if (recetas.isEmpty()) {
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 64.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Restaurant,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text(
-                        text = if (titulo.contains("Mis")) "Aún no has creado recetas" else "No hay recetas disponibles",
-                        style = MaterialTheme.typography.bodyLarge,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+    if (recetas.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Restaurant,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "No hay recetas disponibles",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
-        items(recetas) { receta ->
-            TarjetaReceta(
-                receta = receta,
-                autor = if (mostrarAutor) usuariosMap[receta.usuarioId] else null,
-                onClick = { onRecetaClick(receta) },
-                onDeleteClick = onDeleteClick?.let { { it(receta) } },
-                onEditClick = onEditClick?.let { { it(receta) } },
-                onAutorClick = if (mostrarAutor && onAutorClick != null) {
-                    { usuariosMap[receta.usuarioId]?.let { onAutorClick(it) } }
-                } else null
-            )
+    } else {
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(recetas) { receta ->
+                TarjetaReceta(
+                    receta = receta,
+                    autor = if (mostrarAutor) usuariosMap[receta.usuarioId] else null,
+                    onClick = { onRecetaClick(receta) },
+                    onDeleteClick = onDeleteClick?.let { { it(receta) } },
+                    onEditClick = onEditClick?.let { { it(receta) } },
+                    onAutorClick = if (mostrarAutor && onAutorClick != null) {
+                        { usuariosMap[receta.usuarioId]?.let { onAutorClick(it) } }
+                    } else null
+                )
+            }
         }
     }
 }
 
+// === TARJETA DE RECETA ===
 @Composable
 fun TarjetaReceta(
     receta: Receta,
@@ -583,49 +537,43 @@ fun TarjetaReceta(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Imagen
+        Column {
             if (receta.imagenUri != null) {
                 Image(
                     painter = rememberAsyncImagePainter(Uri.parse(receta.imagenUri)),
                     contentDescription = receta.nombre,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp),
+                        .height(180.dp),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(180.dp)
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Restaurant,
                         contentDescription = null,
-                        modifier = Modifier.size(64.dp),
+                        modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                     )
                 }
             }
 
-            // Contenido
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = receta.nombre,
-                    fontSize = 20.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -637,23 +585,11 @@ fun TarjetaReceta(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.clickable { onAutorClick() }
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = autor.getIniciales(),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
+                        AvatarUsuario(usuario = autor, size = 20.dp)
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = autor.nombreUsuario,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -662,7 +598,7 @@ fun TarjetaReceta(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     InfoChip(icon = "⏱️", text = receta.getTiempoDisplay())
                     InfoChip(icon = "📊", text = receta.dificultad)
@@ -670,27 +606,19 @@ fun TarjetaReceta(
                 }
 
                 if (onEditClick != null || onDeleteClick != null) {
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
                         if (onEditClick != null) {
                             IconButton(onClick = onEditClick) {
-                                Icon(
-                                    Icons.Default.Edit,
-                                    "Editar",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
+                                Icon(Icons.Default.Edit, "Editar", tint = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                         if (onDeleteClick != null) {
                             IconButton(onClick = onDeleteClick) {
-                                Icon(
-                                    Icons.Default.Delete,
-                                    "Eliminar",
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
+                                Icon(Icons.Default.Delete, "Eliminar", tint = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }
@@ -700,29 +628,59 @@ fun TarjetaReceta(
     }
 }
 
+// === AVATAR DE USUARIO ===
+@Composable
+fun AvatarUsuario(usuario: Usuario, size: Dp = 48.dp) {
+    if (usuario.fotoPerfilUri != null) {
+        Image(
+            painter = rememberAsyncImagePainter(Uri.parse(usuario.fotoPerfilUri)),
+            contentDescription = usuario.nombreUsuario,
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = usuario.getIniciales(),
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = (size.value / 2.5).sp
+            )
+        }
+    }
+}
+
+// === CHIP DE INFORMACIÓN ===
 @Composable
 fun InfoChip(icon: String, text: String) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceVariant
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = icon, fontSize = 14.sp)
+            Text(text = icon, fontSize = 12.sp)
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = text,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
-// CONTINUACIÓN DEL MAINACTIVITY
-
+// === DETALLE DE RECETA ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaDetalleReceta(
@@ -743,12 +701,11 @@ fun PantallaDetalleReceta(
                 title = { },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Volver")
+                        Icon(Icons.Default.ArrowBack, "Volver", tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -758,31 +715,30 @@ fun PantallaDetalleReceta(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                // Imagen principal
                 if (receta.imagenUri != null) {
                     Image(
                         painter = rememberAsyncImagePainter(Uri.parse(receta.imagenUri)),
                         contentDescription = receta.nombre,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(300.dp),
+                            .height(280.dp),
                         contentScale = ContentScale.Crop
                     )
                 } else {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(300.dp)
+                            .height(280.dp)
                             .background(MaterialTheme.colorScheme.surfaceVariant),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Restaurant,
                             contentDescription = null,
-                            modifier = Modifier.size(100.dp),
+                            modifier = Modifier.size(80.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                         )
                     }
@@ -793,49 +749,36 @@ fun PantallaDetalleReceta(
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                     Text(
                         text = receta.nombre,
-                        fontSize = 28.sp,
+                        fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     if (autor != null) {
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { onAutorClick(autor!!) },
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Row(
-                                modifier = Modifier.padding(16.dp),
+                                modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.primary),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = autor!!.getIniciales(),
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
+                                AvatarUsuario(usuario = autor!!, size = 40.dp)
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text(
                                         text = autor!!.nombreCompleto,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
+                                        fontSize = 15.sp
                                     )
                                     Text(
                                         text = "@${autor!!.nombreUsuario}",
-                                        fontSize = 14.sp,
+                                        fontSize = 13.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -843,11 +786,11 @@ fun PantallaDetalleReceta(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         InfoChip(icon = "⏱️", text = receta.getTiempoDisplay())
                         InfoChip(icon = "📊", text = receta.dificultad)
@@ -860,7 +803,7 @@ fun PantallaDetalleReceta(
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                     Text(
                         text = "Ingredientes",
-                        fontSize = 22.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
@@ -872,29 +815,29 @@ fun PantallaDetalleReceta(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(8.dp)
+                                .size(6.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.onSurface)
                         )
-                        Spacer(modifier = Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = ingrediente.cantidad,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier.padding(end = 6.dp)
                         )
                         Text(
                             text = ingrediente.nombre,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -906,7 +849,7 @@ fun PantallaDetalleReceta(
                 Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                     Text(
                         text = "Preparación",
-                        fontSize = 22.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
                     )
@@ -918,30 +861,29 @@ fun PantallaDetalleReceta(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 1.dp
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surface
                 ) {
-                    Row(modifier = Modifier.padding(20.dp)) {
+                    Row(modifier = Modifier.padding(16.dp)) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(32.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "${index + 1}",
-                                fontSize = 18.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = receta.pasos[index],
-                            fontSize = 15.sp,
-                            lineHeight = 22.sp,
+                            fontSize = 14.sp,
+                            lineHeight = 20.sp,
                             modifier = Modifier.align(Alignment.CenterVertically),
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -956,6 +898,7 @@ fun PantallaDetalleReceta(
     }
 }
 
+// === CREAR/EDITAR RECETA ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaCrearReceta(
@@ -996,16 +939,16 @@ fun PantallaCrearReceta(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
         bottomBar = {
             Surface(
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 3.dp
+                color = MaterialTheme.colorScheme.background,
+                shadowElevation = 8.dp
             ) {
                 Button(
                     onClick = {
@@ -1039,14 +982,12 @@ fun PantallaCrearReceta(
                                 imagenUri = imagenUri?.toString()
                             )
                         }
-
                         onBack()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
+                        .height(50.dp),
                     enabled = nombre.isNotBlank()
                 ) {
                     Text(
@@ -1065,9 +1006,8 @@ fun PantallaCrearReceta(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Selector de imagen
             ImagePickerBox(
                 imageUri = imagenUri,
                 onImageSelected = { uri -> imagenUri = uri }
@@ -1078,8 +1018,7 @@ fun PantallaCrearReceta(
                 onValueChange = { nombre = it },
                 label = { Text("Nombre de la receta") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp)
+                singleLine = true
             )
 
             Row(
@@ -1124,8 +1063,7 @@ fun PantallaCrearReceta(
                     onValueChange = { if (it.all { char -> char.isDigit() }) tiempoValor = it },
                     label = { Text("Tiempo") },
                     modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    shape = RoundedCornerShape(16.dp)
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 DropdownCampo(
                     label = "Unidad",
@@ -1142,11 +1080,9 @@ fun PantallaCrearReceta(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             Text(
                 "Ingredientes",
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
 
@@ -1164,8 +1100,7 @@ fun PantallaCrearReceta(
                             ingredientes = copiaLista
                         },
                         label = { Text("Cant.") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
+                        modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = ingrediente.nombre,
@@ -1175,8 +1110,7 @@ fun PantallaCrearReceta(
                             ingredientes = copiaLista
                         },
                         label = { Text("Ingrediente") },
-                        modifier = Modifier.weight(2f),
-                        shape = RoundedCornerShape(16.dp)
+                        modifier = Modifier.weight(2f)
                     )
                     IconButton(onClick = {
                         if (ingredientes.size > 1) {
@@ -1196,19 +1130,16 @@ fun PantallaCrearReceta(
                     copiaLista.add(IngredienteItem())
                     ingredientes = copiaLista
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.Add, "Añadir", modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Add, "Añadir", modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Añadir Ingrediente")
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             Text(
                 "Pasos",
-                fontSize = 20.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
 
@@ -1221,7 +1152,7 @@ fun PantallaCrearReceta(
                     Box(
                         modifier = Modifier
                             .padding(top = 12.dp)
-                            .size(32.dp)
+                            .size(28.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
@@ -1229,7 +1160,8 @@ fun PantallaCrearReceta(
                         Text(
                             text = "${index + 1}",
                             color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
                         )
                     }
                     OutlinedTextField(
@@ -1241,8 +1173,7 @@ fun PantallaCrearReceta(
                         },
                         label = { Text("Descripción") },
                         modifier = Modifier.weight(1f),
-                        minLines = 2,
-                        shape = RoundedCornerShape(16.dp)
+                        minLines = 2
                     )
                     IconButton(
                         onClick = {
@@ -1265,19 +1196,19 @@ fun PantallaCrearReceta(
                     copiaLista.add("")
                     pasos = copiaLista
                 },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.Add, "Añadir", modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Add, "Añadir", modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Añadir Paso")
             }
 
-            Spacer(modifier = Modifier.height(80.dp))
+            Spacer(modifier = Modifier.height(60.dp))
         }
     }
 }
 
+// === DROPDOWN CAMPO ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DropdownCampo(
@@ -1303,7 +1234,6 @@ fun DropdownCampo(
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandido)
             },
-            shape = RoundedCornerShape(16.dp),
             modifier = Modifier.menuAnchor().fillMaxWidth()
         )
         ExposedDropdownMenu(
@@ -1320,6 +1250,7 @@ fun DropdownCampo(
     }
 }
 
+// === PERFIL DE USUARIO ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaPerfil(
@@ -1331,6 +1262,15 @@ fun PantallaPerfil(
 ) {
     var editandoBio by remember { mutableStateOf(false) }
     var bioTemp by remember { mutableStateOf(usuario.bio) }
+    val isDarkMode by viewModel.themeManager.isDarkMode.collectAsState()
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.actualizarFotoPerfil(it.toString())
+        }
+    }
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
     val fechaRegistroStr = dateFormatter.format(Date(usuario.fechaRegistro))
@@ -1348,16 +1288,22 @@ fun PantallaPerfil(
                 },
                 actions = {
                     if (esMiPerfil) {
+                        IconButton(onClick = { viewModel.themeManager.toggleTheme() }) {
+                            Icon(
+                                if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                "Cambiar Tema"
+                            )
+                        }
                         IconButton(onClick = onCerrarSesion) {
                             Icon(Icons.Default.ExitToApp, "Cerrar Sesión")
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
+                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
@@ -1368,7 +1314,7 @@ fun PantallaPerfil(
                 .fillMaxSize()
                 .padding(paddingValues),
             contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
                 Column(
@@ -1377,38 +1323,47 @@ fun PantallaPerfil(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.Center
+                            .size(100.dp)
+                            .clickable(enabled = esMiPerfil) { launcher.launch("image/*") }
                     ) {
-                        Text(
-                            text = usuario.getIniciales(),
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                        AvatarUsuario(usuario = usuario, size = 100.dp)
+                        if (esMiPerfil) {
+                            Box(
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.3f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.CameraAlt,
+                                    "Cambiar foto",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
                         text = usuario.nombreCompleto,
-                        fontSize = 26.sp,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
 
                     Text(
                         text = "@${usuario.nombreUsuario}",
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
                         text = "Miembro desde $fechaRegistroStr",
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -1417,10 +1372,10 @@ fun PantallaPerfil(
             item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Column(modifier = Modifier.padding(20.dp)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -1428,7 +1383,7 @@ fun PantallaPerfil(
                         ) {
                             Text(
                                 text = "Biografía",
-                                fontSize = 18.sp,
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             if (esMiPerfil && !editandoBio) {
@@ -1441,7 +1396,7 @@ fun PantallaPerfil(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         if (editandoBio && esMiPerfil) {
                             OutlinedTextField(
@@ -1449,11 +1404,10 @@ fun PantallaPerfil(
                                 onValueChange = { bioTemp = it },
                                 modifier = Modifier.fillMaxWidth(),
                                 placeholder = { Text("Cuéntanos sobre ti...") },
-                                minLines = 3,
-                                shape = RoundedCornerShape(16.dp)
+                                minLines = 3
                             )
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1462,20 +1416,17 @@ fun PantallaPerfil(
                                 TextButton(onClick = { editandoBio = false }) {
                                     Text("Cancelar")
                                 }
-                                Button(
-                                    onClick = {
-                                        viewModel.actualizarPerfil(bioTemp)
-                                        editandoBio = false
-                                    },
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
+                                Button(onClick = {
+                                    viewModel.actualizarPerfil(bioTemp)
+                                    editandoBio = false
+                                }) {
                                     Text("Guardar")
                                 }
                             }
                         } else {
                             Text(
                                 text = if (usuario.bio.isNotBlank()) usuario.bio else "Sin biografía",
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 color = if (usuario.bio.isNotBlank())
                                     MaterialTheme.colorScheme.onSurface
                                 else
@@ -1489,13 +1440,13 @@ fun PantallaPerfil(
             item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -1503,16 +1454,16 @@ fun PantallaPerfil(
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.width(16.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
                                 text = "Email",
-                                fontSize = 12.sp,
+                                fontSize = 11.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = usuario.email,
-                                fontSize = 15.sp
+                                fontSize = 14.sp
                             )
                         }
                     }

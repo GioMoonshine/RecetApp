@@ -39,7 +39,9 @@ data class Receta(
     val fechaCreacion: Long = System.currentTimeMillis(),
 
     // URI de la imagen personalizada (si existe)
-    val imagenUri: String? = null
+    val imagenUri: String? = null,
+
+    val esPrivada: Boolean
 ) {
     fun getTiempoDisplay(): String {
         return "$tiempoValor ${tiempoUnidad.lowercase(Locale.ROOT)}"

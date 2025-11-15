@@ -1,4 +1,4 @@
-package com.namnam.recetapp
+package com.namnam.recetapp.com.namnam.recetapp
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,8 +38,8 @@ fun ImagePickerBox(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(220.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .height(200.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable { launcher.launch("image/*") },
         contentAlignment = Alignment.Center
@@ -52,7 +52,6 @@ fun ImagePickerBox(
                 contentScale = ContentScale.Crop
             )
 
-            // Overlay para indicar que se puede cambiar
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -62,7 +61,7 @@ fun ImagePickerBox(
                 Icon(
                     imageVector = Icons.Default.AddAPhoto,
                     contentDescription = "Cambiar foto",
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(40.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
@@ -74,13 +73,13 @@ fun ImagePickerBox(
                 Icon(
                     imageVector = Icons.Default.Restaurant,
                     contentDescription = "Agregar foto",
-                    modifier = Modifier.size(64.dp),
+                    modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Toca para agregar una foto",
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

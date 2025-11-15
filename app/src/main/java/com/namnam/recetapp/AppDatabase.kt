@@ -6,8 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-// Versión actualizada a 4 para incluir imagenUri en recetas
-@Database(entities = [Receta::class, Usuario::class], version = 4)
+@Database(entities = [Receta::class, Usuario::class], version = 7)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
