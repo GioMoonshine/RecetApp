@@ -6,12 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-// ¡¡IMPORTANTE!! Versión sube de 1 a 2
-@Database(entities = [Receta::class], version = 2)
+// Versión actualizada a 4 para incluir imagenUri en recetas
+@Database(entities = [Receta::class, Usuario::class], version = 4)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun recetaDao(): RecetaDao
+    abstract fun usuarioDao(): UsuarioDao
 
     companion object {
         @Volatile
@@ -24,10 +25,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_database"
                 )
-                    // ¡¡IMPORTANTE!!
-                    // Esto le dice a Room que si hay una migración (de v1 a v2),
-                    // simplemente borre la base de datos antigua y cree una nueva.
-                    // Para un proyecto de universidad, es perfecto.
                     .fallbackToDestructiveMigration()
                     .build()
 
