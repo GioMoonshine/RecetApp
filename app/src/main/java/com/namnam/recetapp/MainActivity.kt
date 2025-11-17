@@ -1,5 +1,6 @@
 package com.namnam.recetapp
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -19,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,6 +33,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -45,6 +49,7 @@ import com.namnam.recetapp.ui.theme.RecetAppTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.core.net.toUri
 
 // === RUTAS DE NAVEGACIÓN ===
 object Rutas {
@@ -96,6 +101,7 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
     var username by remember { mutableStateOf("") }
     var nombreCompleto by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
     var errorMsg by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
@@ -103,11 +109,11 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(40.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -116,73 +122,150 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
             Image(
                 painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "Logo",
-                modifier = Modifier
-                    .size(100.dp)
-                    .clip(CircleShape),
-                contentScale = ContentScale.Crop
+                modifier = Modifier.size(120.dp),
+                contentScale = ContentScale.Fit
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Subtítulo primero
             Text(
-                "RecetApp",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
+                text = if (modoRegistro) "Únete hoy" else "Hola, bienvenido de vuelta",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Título después
             Text(
-                if (modoRegistro) "Crea tu cuenta" else "Bienvenido",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = if (modoRegistro) "Crea tu cuenta." else "Inicia sesión en\ntu cuenta.",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+                lineHeight = 36.sp
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
-            OutlinedTextField(
-                value = username,
-                onValueChange = {
-                    username = it
-                    errorMsg = ""
-                },
-                label = { Text("Usuario") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
-            )
-
+            // Campos según modo
             if (modoRegistro) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = {
+                        email = it
+                        errorMsg = ""
+                    },
+                    label = { Text("Email") },
+                    placeholder = { Text("nombre@dominio.com") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+                )
+
                 Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Usuario") },
+                    placeholder = { Text("Tu nombre de usuario") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 OutlinedTextField(
                     value = nombreCompleto,
                     onValueChange = { nombreCompleto = it },
                     label = { Text("Nombre completo") },
+                    placeholder = { Text("Tu nombre completo") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email") },
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Contraseña") },
+                    placeholder = { Text("Tu contraseña") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    visualTransformation = PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     )
                 )
+            } else {
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = {
+                        username = it
+                        errorMsg = ""
+                    },
+                    label = { Text("Email o Usuario") },
+                    placeholder = { Text("nombre@dominio.com") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Contraseña") },
+                    placeholder = { Text("Tu contraseña") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Text(
+                        text = "¿Olvidaste tu contraseña?",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clickable { }
+                    )
+                }
             }
 
             if (errorMsg.isNotEmpty()) {
@@ -190,12 +273,14 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
                 Text(
                     text = errorMsg,
                     color = MaterialTheme.colorScheme.error,
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    textAlign = TextAlign.Center
                 )
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Botón principal
             Button(
                 onClick = {
                     scope.launch {
@@ -215,29 +300,47 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
-                enabled = username.isNotBlank() && (!modoRegistro || (nombreCompleto.isNotBlank() && email.isNotBlank())),
+                    .height(56.dp),
+                enabled = if (modoRegistro) {
+                    username.isNotBlank() && nombreCompleto.isNotBlank() && email.isNotBlank()
+                } else {
+                    username.isNotBlank()
+                },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                    containerColor = MaterialTheme.colorScheme.onBackground,
+                    contentColor = MaterialTheme.colorScheme.background,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    if (modoRegistro) "Crear cuenta" else "Iniciar sesión",
+                    text = if (modoRegistro) "Registrarse" else "Iniciar Sesión",
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            TextButton(onClick = {
-                modoRegistro = !modoRegistro
-                errorMsg = ""
-            }) {
+            // Link para cambiar entre login y registro
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    if (modoRegistro) "¿Ya tienes cuenta? Inicia sesión" else "¿No tienes cuenta? Regístrate",
+                    text = if (modoRegistro) "¿Ya tienes cuenta? " else "¿No tienes cuenta? ",
+                    fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = if (modoRegistro) "Inicia Sesión" else "Regístrate",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.clickable {
+                        modoRegistro = !modoRegistro
+                        errorMsg = ""
+                    }
                 )
             }
         }
@@ -245,9 +348,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
 }
 
 // === NAVEGACIÓN PRINCIPAL ===
-// ESTE ES SOLO EL FRAGMENTO CORREGIDO DE MainActivity.kt
-// Reemplaza la función AppRecetasNavegacion completa
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
@@ -311,7 +411,6 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                                 recetaSeleccionada = receta
                                 pantallaActual = Pantalla.DETALLE
                             },
-                            // Solo permitir editar/borrar recetas del usuario actual
                             onDeleteClick = { receta -> viewModel.borrarReceta(receta) },
                             onEditClick = { receta ->
                                 recetaSeleccionada = receta
@@ -329,7 +428,6 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
                                 recetaSeleccionada = receta
                                 pantallaActual = Pantalla.DETALLE
                             },
-                            // NO permitir editar/borrar en Explorar
                             onDeleteClick = null,
                             onEditClick = null,
                             mostrarAutor = true,
@@ -396,82 +494,6 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
     }
 }
 
-// TAMBIÉN REEMPLAZA PantallaListaRecetas:
-
-@Composable
-fun PantallaListaRecetas(
-    recetas: List<Receta>,
-    viewModel: RecetasViewModel,
-    onRecetaClick: (Receta) -> Unit,
-    onDeleteClick: ((Receta) -> Unit)?,
-    onEditClick: ((Receta) -> Unit)?,
-    mostrarAutor: Boolean = false,
-    onAutorClick: ((Usuario) -> Unit)? = null,
-    usuarioActualId: Int? = null  // NUEVO PARÁMETRO
-) {
-    var usuariosMap by remember { mutableStateOf<Map<Int, Usuario>>(emptyMap()) }
-
-    LaunchedEffect(recetas) {
-        if (mostrarAutor) {
-            val map = mutableMapOf<Int, Usuario>()
-            recetas.forEach { receta ->
-                if (!map.containsKey(receta.usuarioId)) {
-                    viewModel.obtenerUsuarioPorId(receta.usuarioId)?.let { usuario ->
-                        map[receta.usuarioId] = usuario
-                    }
-                }
-            }
-            usuariosMap = map
-        }
-    }
-
-    if (recetas.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Default.Restaurant,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "No hay recetas disponibles",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    } else {
-        LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(recetas) { receta ->
-                // Verificar si la receta pertenece al usuario actual
-                val esPropietario = usuarioActualId != null && receta.usuarioId == usuarioActualId
-
-                TarjetaReceta(
-                    receta = receta,
-                    autor = if (mostrarAutor) usuariosMap[receta.usuarioId] else null,
-                    onClick = { onRecetaClick(receta) },
-                    // Solo mostrar botones si es propietario Y los callbacks no son null
-                    onDeleteClick = if (esPropietario && onDeleteClick != null) {
-                        { onDeleteClick(receta) }
-                    } else null,
-                    onEditClick = if (esPropietario && onEditClick != null) {
-                        { onEditClick(receta) }
-                    } else null,
-                    onAutorClick = if (mostrarAutor && onAutorClick != null) {
-                        { usuariosMap[receta.usuarioId]?.let { onAutorClick(it) } }
-                    } else null
-                )
-            }
-        }
-    }
-}
 // === BARRA DE NAVEGACIÓN INFERIOR ===
 @Composable
 fun AppBottomNavigation(navController: NavHostController) {
@@ -548,7 +570,8 @@ fun PantallaListaRecetas(
     onDeleteClick: ((Receta) -> Unit)?,
     onEditClick: ((Receta) -> Unit)?,
     mostrarAutor: Boolean = false,
-    onAutorClick: ((Usuario) -> Unit)? = null
+    onAutorClick: ((Usuario) -> Unit)? = null,
+    usuarioActualId: Int? = null
 ) {
     var usuariosMap by remember { mutableStateOf<Map<Int, Usuario>>(emptyMap()) }
 
@@ -591,12 +614,18 @@ fun PantallaListaRecetas(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(recetas) { receta ->
+                val esPropietario = usuarioActualId != null && receta.usuarioId == usuarioActualId
+
                 TarjetaReceta(
                     receta = receta,
                     autor = if (mostrarAutor) usuariosMap[receta.usuarioId] else null,
                     onClick = { onRecetaClick(receta) },
-                    onDeleteClick = onDeleteClick?.let { { it(receta) } },
-                    onEditClick = onEditClick?.let { { it(receta) } },
+                    onDeleteClick = if (esPropietario && onDeleteClick != null) {
+                        { onDeleteClick(receta) }
+                    } else null,
+                    onEditClick = if (esPropietario && onEditClick != null) {
+                        { onEditClick(receta) }
+                    } else null,
                     onAutorClick = if (mostrarAutor && onAutorClick != null) {
                         { usuariosMap[receta.usuarioId]?.let { onAutorClick(it) } }
                     } else null
@@ -629,7 +658,7 @@ fun TarjetaReceta(
         Column {
             if (receta.imagenUri != null) {
                 Image(
-                    painter = rememberAsyncImagePainter(Uri.parse(receta.imagenUri)),
+                    painter = rememberAsyncImagePainter(receta.imagenUri.toUri()),
                     contentDescription = receta.nombre,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -712,11 +741,12 @@ fun TarjetaReceta(
 }
 
 // === AVATAR DE USUARIO ===
+@SuppressLint("UseKtx")
 @Composable
 fun AvatarUsuario(usuario: Usuario, size: Dp = 48.dp) {
     if (usuario.fotoPerfilUri != null) {
         Image(
-            painter = rememberAsyncImagePainter(Uri.parse(usuario.fotoPerfilUri)),
+            painter = rememberAsyncImagePainter(usuario.fotoPerfilUri.toUri()),
             contentDescription = usuario.nombreUsuario,
             modifier = Modifier
                 .size(size)
@@ -784,7 +814,7 @@ fun PantallaDetalleReceta(
                 title = { },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, "Volver", tint = MaterialTheme.colorScheme.onBackground)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = MaterialTheme.colorScheme.onBackground)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -803,7 +833,7 @@ fun PantallaDetalleReceta(
             item {
                 if (receta.imagenUri != null) {
                     Image(
-                        painter = rememberAsyncImagePainter(Uri.parse(receta.imagenUri)),
+                        painter = rememberAsyncImagePainter(receta.imagenUri.toUri()),
                         contentDescription = receta.nombre,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1005,7 +1035,7 @@ fun PantallaCrearReceta(
     var tiempoUnidad by remember { mutableStateOf(recetaExistente?.tiempoUnidad ?: opcionesTiempo[0]) }
     var ingredientes by remember { mutableStateOf(recetaExistente?.ingredientes ?: listOf(IngredienteItem())) }
     var pasos by remember { mutableStateOf(recetaExistente?.pasos ?: listOf("", "", "")) }
-    var imagenUri by remember { mutableStateOf(recetaExistente?.imagenUri?.let { Uri.parse(it) }) }
+    var imagenUri by remember { mutableStateOf(recetaExistente?.imagenUri?.toUri()) }
 
     Scaffold(
         topBar = {
@@ -1018,7 +1048,7 @@ fun PantallaCrearReceta(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -1042,7 +1072,7 @@ fun PantallaCrearReceta(
                         val valorTiempo = tiempoValor.toIntOrNull() ?: 0
 
                         if (esModoEditar) {
-                            val recetaActualizada = recetaExistente!!.copy(
+                            val recetaActualizada = recetaExistente.copy(
                                 nombre = nombre,
                                 tipo = tipo,
                                 dificultad = dificultad,
@@ -1365,7 +1395,7 @@ fun PantallaPerfil(
                 navigationIcon = {
                     if (onBack != null) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, "Volver")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                         }
                     }
                 },
@@ -1378,7 +1408,7 @@ fun PantallaPerfil(
                             )
                         }
                         IconButton(onClick = onCerrarSesion) {
-                            Icon(Icons.Default.ExitToApp, "Cerrar Sesión")
+                            Icon(Icons.AutoMirrored.Filled.ExitToApp, "Cerrar Sesión")
                         }
                     }
                 },
@@ -1508,7 +1538,7 @@ fun PantallaPerfil(
                             }
                         } else {
                             Text(
-                                text = if (usuario.bio.isNotBlank()) usuario.bio else "Sin biografía",
+                                text = usuario.bio.ifBlank { "Sin biografía" },
                                 fontSize = 14.sp,
                                 color = if (usuario.bio.isNotBlank())
                                     MaterialTheme.colorScheme.onSurface
