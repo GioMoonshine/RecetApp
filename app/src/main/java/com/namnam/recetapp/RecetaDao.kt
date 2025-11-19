@@ -26,4 +26,16 @@ interface RecetaDao {
     // Obtener solo recetas PÚBLICAS para explorar (de todos los usuarios)
     @Query("SELECT * FROM recetas_usuario WHERE esPrivada = 0 ORDER BY fechaCreacion DESC")
     fun obtenerRecetasPublicas(): Flow<List<Receta>>
+
+    // ✅ NUEVO: Contar cuántas recetas tiene un usuario
+    @Query("SELECT COUNT(*) FROM recetas_usuario WHERE usuarioId = :userId")
+    suspend fun contarRecetasDelUsuario(userId: Int): Int
+
+    // ✅ NUEVO: Eliminar TODAS las recetas de un usuario (para testing)
+    @Query("DELETE FROM recetas_usuario WHERE usuarioId = :userId")
+    suspend fun eliminarTodasLasRecetasDelUsuario(userId: Int)
+
+    // ✅ NUEVO: Obtener todas las recetas (sin Flow, para debug)
+    @Query("SELECT * FROM recetas_usuario")
+    suspend fun obtenerTodasLasRecetas(): List<Receta>
 }

@@ -5,12 +5,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class RecetasViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -20,6 +23,10 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
     private val usuarioDao = database.usuarioDao()
     private val sessionManager = SessionManager(application)
     val themeManager = ThemeManager(application)
+
+    // === JOBS PARA CANCELAR COLECCIONES ANTERIORES ===
+    private var misRecetasJob: Job? = null
+    private var explorarRecetasJob: Job? = null
 
     // === ESTADOS ===
     private val _usuarioActual = MutableStateFlow<Usuario?>(null)
@@ -45,23 +52,39 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
     // === USUARIO ===
     private fun cargarUsuarioActual() {
         viewModelScope.launch {
+            // ✅ PASO 1: Cancelar todas las colecciones anteriores
+            misRecetasJob?.cancel()
+            explorarRecetasJob?.cancel()
+
+            // ✅ PASO 2: Limpiar estados inmediatamente
+            _misRecetas.value = emptyList()
+            _explorarRecetas.value = emptyList()
+            _usuarioActual.value = null
+
+            // ✅ PASO 3: Cargar nuevo usuario
             val userId = sessionManager.getCurrentUserId()
             if (userId != -1) {
                 val usuario = usuarioDao.obtenerUsuarioPorId(userId)
                 _usuarioActual.value = usuario
 
-                // Cargar MIS recetas (solo las del usuario actual, privadas y públicas)
-                launch {
+                // ✅ PASO 4: Iniciar nuevas colecciones con el userId correcto
+                misRecetasJob = launch {
                     recetaDao.obtenerRecetasDelUsuario(userId).collect { recetas ->
-                        _misRecetas.value = recetas
+                        // ✅ Verificación adicional: solo actualizar si sigue siendo el usuario actual
+                        if (_usuarioActual.value?.id == userId) {
+                            _misRecetas.value = recetas
+                        }
                     }
                 }
 
-                // Cargar recetas públicas EXCLUYENDO las del usuario actual
-                launch {
+                explorarRecetasJob = launch {
                     recetaDao.obtenerRecetasPublicas().collect { todasPublicas ->
-                        // Filtrar para excluir las del usuario actual
-                        _explorarRecetas.value = todasPublicas.filter { it.usuarioId != userId }
+                        // ✅ Verificación adicional: solo actualizar si sigue siendo el usuario actual
+                        if (_usuarioActual.value?.id == userId) {
+                            _explorarRecetas.value = todasPublicas.filter { receta ->
+                                receta.usuarioId != userId
+                            }
+                        }
                     }
                 }
             }
@@ -80,7 +103,7 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
                 return false
             }
 
-            // Crear usuario
+            // 1. Crear usuario
             val nuevoUsuario = Usuario(
                 nombreUsuario = nombreUsuario,
                 nombreCompleto = nombreCompleto,
@@ -89,13 +112,18 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
             )
             val userId = usuarioDao.insertarUsuario(nuevoUsuario).toInt()
 
-            // Crear recetas por defecto PRIVADAS ANTES de guardar la sesión
-            val recetasPorDefecto = RecetasData.obtenerRecetasPorDefecto(userId)
-            for (receta in recetasPorDefecto) {
-                recetaDao.insertarReceta(receta)
+            // 2. ✅ VERIFICAR que el usuario no tenga recetas ya
+            val cantidadRecetas = recetaDao.contarRecetasDelUsuario(userId)
+
+            // 3. Solo crear recetas por defecto si NO tiene ninguna
+            if (cantidadRecetas == 0) {
+                val recetasPorDefecto = RecetasData.obtenerRecetasPorDefecto(userId)
+                for (receta in recetasPorDefecto) {
+                    recetaDao.insertarReceta(receta)
+                }
             }
 
-            // Guardar sesión y cargar datos
+            // 4. Guardar sesión y cargar datos
             sessionManager.saveUserSession(userId, nombreUsuario)
             cargarUsuarioActual()
 
@@ -122,6 +150,10 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun cerrarSesion() {
+        // ✅ Cancelar colecciones antes de limpiar
+        misRecetasJob?.cancel()
+        explorarRecetasJob?.cancel()
+
         sessionManager.clearSession()
         _usuarioActual.value = null
         _misRecetas.value = emptyList()
@@ -144,6 +176,16 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
     fun actualizarFotoPerfil(uri: String) {
         viewModelScope.launch {
             _usuarioActual.value?.let { usuario ->
+                // Eliminar la foto anterior si existe y no es un recurso
+                if (usuario.fotoPerfilUri != null &&
+                    !usuario.fotoPerfilUri.startsWith("android.resource://")) {
+                    withContext(Dispatchers.IO) {
+                        ImageCompressor.deleteCompressedImage(
+                            usuario.fotoPerfilUri.removePrefix("file://")
+                        )
+                    }
+                }
+
                 val usuarioActualizado = usuario.copy(fotoPerfilUri = uri)
                 usuarioDao.actualizarUsuario(usuarioActualizado)
                 _usuarioActual.value = usuarioActualizado
@@ -165,7 +207,7 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
         ingredientes: List<IngredienteItem>,
         pasos: List<String>,
         imagenUri: String? = null,
-        esPrivada: Boolean = false  // Por defecto las recetas nuevas son públicas
+        esPrivada: Boolean = false
     ) {
         viewModelScope.launch {
             _usuarioActual.value?.let { usuario ->
@@ -194,7 +236,34 @@ class RecetasViewModel(application: Application) : AndroidViewModel(application)
 
     fun borrarReceta(receta: Receta) {
         viewModelScope.launch {
+            // Eliminar la imagen física si existe
+            if (receta.imagenUri != null &&
+                !receta.imagenUri.startsWith("android.resource://")) {
+                withContext(Dispatchers.IO) {
+                    ImageCompressor.deleteCompressedImage(
+                        receta.imagenUri.removePrefix("file://")
+                    )
+                }
+            }
+
             recetaDao.borrarReceta(receta)
+        }
+    }
+
+    fun limpiarImagenesHuerfanas() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val todasLasRecetas = _misRecetas.value + _explorarRecetas.value
+                val rutasReferenciadas = todasLasRecetas
+                    .mapNotNull { it.imagenUri }
+                    .filter { !it.startsWith("android.resource://") }
+                    .map { it.removePrefix("file://") }
+
+                ImageCompressor.cleanOrphanImages(
+                    getApplication(),
+                    rutasReferenciadas
+                )
+            }
         }
     }
 

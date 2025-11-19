@@ -28,7 +28,7 @@ object RecetasData {
                 ),
                 usuarioId = usuarioId,
                 imagenUri = "android.resource://com.namnam.recetapp/" + R.drawable.receta_carbonara,
-                esPrivada = true
+                esPrivada = true  // ✅ PRIVADA - no aparece en Explorar
             ),
 
             // === RECETA 2: RISOTTO DE HONGOS ===
@@ -61,7 +61,7 @@ object RecetasData {
                 ),
                 usuarioId = usuarioId,
                 imagenUri = "android.resource://com.namnam.recetapp/" + R.drawable.receta_rissotto,
-                esPrivada = true
+                esPrivada = true  // ✅ PRIVADA
             ),
 
             // === RECETA 3: TARTA DE LIMÓN ===
@@ -92,7 +92,7 @@ object RecetasData {
                 ),
                 usuarioId = usuarioId,
                 imagenUri = "android.resource://com.namnam.recetapp/" + R.drawable.receta_tarta_limon,
-                esPrivada = true
+                esPrivada = true  // ✅ PRIVADA
             ),
 
             // === RECETA 4: SALMÓN AL HORNO ===
@@ -124,7 +124,7 @@ object RecetasData {
                 ),
                 usuarioId = usuarioId,
                 imagenUri = "android.resource://com.namnam.recetapp/" + R.drawable.receta_salmon,
-                esPrivada = true
+                esPrivada = true  // ✅ PRIVADA
             ),
 
             // === RECETA 5: BROWNIE DE CHOCOLATE ===
@@ -158,7 +158,7 @@ object RecetasData {
                 ),
                 usuarioId = usuarioId,
                 imagenUri = "android.resource://com.namnam.recetapp/" + R.drawable.receta_brownie,
-                esPrivada = true
+                esPrivada = true  // ✅ PRIVADA
             )
         )
     }

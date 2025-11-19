@@ -6,7 +6,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [Receta::class, Usuario::class], version = 8)
+@Database(entities = [Receta::class, Usuario::class], version = 10)  // ✅ Cambiado a 10
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -30,6 +30,12 @@ abstract class AppDatabase : RoomDatabase() {
                 INSTANCIA = instancia
                 instancia
             }
+        }
+
+        // ✅ NUEVO: Función para resetear la instancia (útil después de borrar BD)
+        fun resetDatabase() {
+            INSTANCIA?.close()
+            INSTANCIA = null
         }
     }
 }

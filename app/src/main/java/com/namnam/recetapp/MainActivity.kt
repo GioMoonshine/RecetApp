@@ -23,13 +23,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,11 +51,13 @@ import coil.compose.rememberAsyncImagePainter
 import com.namnam.recetapp.com.namnam.recetapp.ImagePickerBox
 import com.namnam.recetapp.ui.theme.RecetAppTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.core.net.toUri
+import androidx.compose.material.icons.filled.BugReport
 
-// === RUTAS DE NAVEGACIÓN ===
 object Rutas {
     const val MIS_RECETAS = "mis_recetas"
     const val EXPLORAR = "explorar"
@@ -65,7 +71,6 @@ private enum class Pantalla {
     PERFIL_USUARIO
 }
 
-// === ACTIVITY PRINCIPAL ===
 class MainActivity : ComponentActivity() {
     private val viewModel: RecetasViewModel by viewModels {
         RecetasViewModel.RecetasViewModelFactory(application)
@@ -94,7 +99,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// === PANTALLA DE AUTENTICACIÓN ===
 @Composable
 fun PantallaAuth(viewModel: RecetasViewModel) {
     var modoRegistro by remember { mutableStateOf(false) }
@@ -118,7 +122,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo
             Image(
                 painter = painterResource(id = R.drawable.app_logo),
                 contentDescription = "Logo",
@@ -128,7 +131,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Subtítulo primero
             Text(
                 text = if (modoRegistro) "Únete hoy" else "Hola, bienvenido de vuelta",
                 style = MaterialTheme.typography.bodyMedium,
@@ -138,7 +140,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Título después
             Text(
                 text = if (modoRegistro) "Crea tu cuenta." else "Inicia sesión en\ntu cuenta.",
                 style = MaterialTheme.typography.headlineMedium,
@@ -150,7 +151,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Campos según modo
             if (modoRegistro) {
                 OutlinedTextField(
                     value = email,
@@ -280,7 +280,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Botón principal
             Button(
                 onClick = {
                     scope.launch {
@@ -322,7 +321,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Link para cambiar entre login y registro
             Row(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
@@ -347,7 +345,6 @@ fun PantallaAuth(viewModel: RecetasViewModel) {
     }
 }
 
-// === NAVEGACIÓN PRINCIPAL ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
@@ -494,7 +491,6 @@ fun AppRecetasNavegacion(viewModel: RecetasViewModel) {
     }
 }
 
-// === BARRA DE NAVEGACIÓN INFERIOR ===
 @Composable
 fun AppBottomNavigation(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -561,7 +557,6 @@ fun AppBottomNavigation(navController: NavHostController) {
     }
 }
 
-// === LISTA DE RECETAS ===
 @Composable
 fun PantallaListaRecetas(
     recetas: List<Receta>,
@@ -614,12 +609,14 @@ fun PantallaListaRecetas(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(recetas) { receta ->
+                // ✅ VALIDACIÓN ROBUSTA: Verificar SIEMPRE el usuarioId
                 val esPropietario = usuarioActualId != null && receta.usuarioId == usuarioActualId
 
                 TarjetaReceta(
                     receta = receta,
                     autor = if (mostrarAutor) usuariosMap[receta.usuarioId] else null,
                     onClick = { onRecetaClick(receta) },
+                    // ✅ Solo mostrar botones si ES propietario Y los callbacks existen
                     onDeleteClick = if (esPropietario && onDeleteClick != null) {
                         { onDeleteClick(receta) }
                     } else null,
@@ -635,7 +632,6 @@ fun PantallaListaRecetas(
     }
 }
 
-// === TARJETA DE RECETA ===
 @Composable
 fun TarjetaReceta(
     receta: Receta,
@@ -740,7 +736,6 @@ fun TarjetaReceta(
     }
 }
 
-// === AVATAR DE USUARIO ===
 @SuppressLint("UseKtx")
 @Composable
 fun AvatarUsuario(usuario: Usuario, size: Dp = 48.dp) {
@@ -771,7 +766,6 @@ fun AvatarUsuario(usuario: Usuario, size: Dp = 48.dp) {
     }
 }
 
-// === CHIP DE INFORMACIÓN ===
 @Composable
 fun InfoChip(icon: String, text: String) {
     Surface(
@@ -793,7 +787,6 @@ fun InfoChip(icon: String, text: String) {
     }
 }
 
-// === DETALLE DE RECETA ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaDetalleReceta(
@@ -1011,7 +1004,6 @@ fun PantallaDetalleReceta(
     }
 }
 
-// === CREAR/EDITAR RECETA ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaCrearReceta(
@@ -1036,6 +1028,9 @@ fun PantallaCrearReceta(
     var ingredientes by remember { mutableStateOf(recetaExistente?.ingredientes ?: listOf(IngredienteItem())) }
     var pasos by remember { mutableStateOf(recetaExistente?.pasos ?: listOf("", "", "")) }
     var imagenUri by remember { mutableStateOf(recetaExistente?.imagenUri?.toUri()) }
+
+    // ✅ NUEVO: Estado de privacidad
+    var esPrivada by remember { mutableStateOf(recetaExistente?.esPrivada ?: false) }
 
     Scaffold(
         topBar = {
@@ -1080,7 +1075,8 @@ fun PantallaCrearReceta(
                                 tiempoUnidad = tiempoUnidad,
                                 ingredientes = ingredientesLimpios,
                                 pasos = pasosLimpios,
-                                imagenUri = imagenUri?.toString()
+                                imagenUri = imagenUri?.toString(),
+                                esPrivada = esPrivada  // ✅ Actualizar privacidad
                             )
                             viewModel.actualizarReceta(recetaActualizada)
                         } else {
@@ -1092,7 +1088,8 @@ fun PantallaCrearReceta(
                                 tiempoUnidad = tiempoUnidad,
                                 ingredientes = ingredientesLimpios,
                                 pasos = pasosLimpios,
-                                imagenUri = imagenUri?.toString()
+                                imagenUri = imagenUri?.toString(),
+                                esPrivada = esPrivada  // ✅ Pasar privacidad
                             )
                         }
                         onBack()
@@ -1133,6 +1130,52 @@ fun PantallaCrearReceta(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
+
+            // ✅ NUEVO: Switch de privacidad
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                onClick = { esPrivada = !esPrivada }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (esPrivada) Icons.Default.Lock else Icons.Default.Public,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (esPrivada) "Receta Privada" else "Receta Pública",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (esPrivada)
+                                "Solo tú puedes ver esta receta"
+                            else
+                                "Otros usuarios pueden ver esta receta en Explorar",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = esPrivada,
+                        onCheckedChange = { esPrivada = it }
+                    )
+                }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1321,7 +1364,6 @@ fun PantallaCrearReceta(
     }
 }
 
-// === DROPDOWN CAMPO ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DropdownCampo(
@@ -1363,7 +1405,6 @@ fun DropdownCampo(
     }
 }
 
-// === PERFIL DE USUARIO ===
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PantallaPerfil(
@@ -1376,12 +1417,28 @@ fun PantallaPerfil(
     var editandoBio by remember { mutableStateOf(false) }
     var bioTemp by remember { mutableStateOf(usuario.bio) }
     val isDarkMode by viewModel.themeManager.isDarkMode.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isCompressingPhoto by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
-            viewModel.actualizarFotoPerfil(it.toString())
+        if (uri != null) {
+            isCompressingPhoto = true
+            scope.launch {
+                // Comprimir en background
+                val compressedPath = withContext(Dispatchers.IO) {
+                    ImageCompressor.compressImage(context, uri)
+                }
+
+                isCompressingPhoto = false
+
+                // Actualizar con la ruta comprimida
+                if (compressedPath != null) {
+                    viewModel.actualizarFotoPerfil("file://$compressedPath")
+                }
+            }
         }
     }
 
@@ -1437,23 +1494,41 @@ fun PantallaPerfil(
                     Box(
                         modifier = Modifier
                             .size(100.dp)
-                            .clickable(enabled = esMiPerfil) { launcher.launch("image/*") }
+                            .clickable(enabled = esMiPerfil && !isCompressingPhoto) {
+                                launcher.launch("image/*")
+                            }
                     ) {
-                        AvatarUsuario(usuario = usuario, size = 100.dp)
-                        if (esMiPerfil) {
+                        if (isCompressingPhoto) {
+                            // Mostrar indicador de carga
                             Box(
                                 modifier = Modifier
                                     .size(100.dp)
                                     .clip(CircleShape)
-                                    .background(Color.Black.copy(alpha = 0.3f)),
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    Icons.Default.CameraAlt,
-                                    "Cambiar foto",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(32.dp)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(40.dp),
+                                    color = MaterialTheme.colorScheme.primary
                                 )
+                            }
+                        } else {
+                            AvatarUsuario(usuario = usuario, size = 100.dp)
+                            if (esMiPerfil) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(alpha = 0.3f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.CameraAlt,
+                                        "Cambiar foto",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
                             }
                         }
                     }
